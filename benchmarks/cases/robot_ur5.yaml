@@ -1,0 +1,14 @@
+# Synthetic case: UR5 joint-space move. Baseline is 5th-order polynomial time
+# scaling with a hand-picked duration, which is what the simulator does today.
+name: robot_ur5
+load:
+  type: ArticulatedRobot
+  urdf: ur5.urdf
+  safety_factor: 0.8
+move:
+  q_start_deg: [0, -90, 90, -90, -90, 0]
+  q_goal_deg: [60, -45, 60, -120, -90, 30]
+  path: joint_linear
+baseline: quintic_time_scaling
+baseline_duration_s: 2.0
+objective: cycle_time

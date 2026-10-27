@@ -1,0 +1,34 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "motion-core"
+version = "0.0.1"
+description = "Rigid-body dynamics and torque-limited motion profile optimization"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+# The whole point of this package: it stays light enough to be a dependency.
+dependencies = ["numpy>=1.26", "scipy>=1.11"]
+
+[project.optional-dependencies]
+# JIT-accelerated dynamics. A pure-numpy path exists and is checked for parity.
+fast = ["numba>=0.59"]
+# URDF-defined serial robots.
+robot = ["yourdfpy>=0.0.56"]
+# Independent cross-check of the inverse dynamics (V3.5). Test-only.
+validation = ["mujoco>=3.1"]
+# Larger NLPs with analytic derivatives, once SLSQP runs out.
+opt = ["casadi>=3.6"]
+bench = ["matplotlib>=3.8", "pyyaml>=6.0", "jupyter"]
+dev = ["pytest>=8", "ruff>=0.5", "motion-core[fast,robot,validation,bench]"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/motion_core"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
