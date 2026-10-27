@@ -16,9 +16,9 @@ optimization problem, and only the load model and the output format differ.
 
 No training data. Physics and constraints are enough.
 
-> **Status: early development.** The dynamics layer is being extracted from an
-> existing robot simulator; the optimization layer is new. The API below is the
-> target design.
+> **Status: early development.** The dynamics layer has been extracted from an
+> existing robot simulator and is in place; the optimization layer is new and the
+> API below is still the target design.
 
 ---
 
@@ -48,17 +48,18 @@ optional dependency — both are
 
 | Area | Contents | Status |
 | --- | --- | --- |
-| Spatial math | SO(3)/SE(3) Lie groups, exp/log, screw axes (Modern Robotics conventions) | 🚧 |
-| Kinematics | PoE forward kinematics, body Jacobian, damped-least-squares IK, manipulability | 🚧 |
-| Dynamics | Recursive Newton-Euler, mass matrix, Coriolis, gravity, forward dynamics | 🚧 |
-| JIT path | Same equations accelerated, checked for parity against numpy | 🚧 |
+| Spatial math | SO(3)/SE(3) Lie groups, exp/log, screw axes (Modern Robotics conventions) | ✅ |
+| Kinematics | PoE forward kinematics, body Jacobian, damped-least-squares IK, manipulability | ✅ |
+| Dynamics | Recursive Newton-Euler, mass matrix, Coriolis, gravity, forward dynamics | ✅ |
+| JIT path | Same equations accelerated, checked for parity against numpy | ✅ |
 | Load models | `LoadModel` interface · `BallScrew` (1-DOF) · `ArticulatedRobot` (n-DOF) | 🚧 |
 | Profiles | 7-segment double-S (jerk-limited time-optimal), trapezoid, polynomial, B-spline | 🚧 |
 | Optimization | Epigraph formulation, SLSQP, infeasibility diagnosis | 🚧 |
 | Verification | Constraint checks, cross-engine comparison against MuJoCo | 🚧 |
 
-🚧 in progress — the first four exist and are tested in the simulator they are
-being extracted from; nothing is in this package yet.
+The first four are in `motion_core.robots`, extracted from the simulator that
+used to own them, with the numpy-vs-JIT parity tests that came with them. 🚧 is
+in progress — not written yet.
 
 ---
 
