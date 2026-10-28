@@ -9,3 +9,6 @@ build/
 
 # 로컬 작업 메모 (공개 레포에 넣지 않는다)
 CLAUDE.md
+
+# 라이브러리라 lock 을 커밋하지 않는다 (소비자 쪽 motionopt 는 커밋 — 의도된 비대칭)
+uv.lock
