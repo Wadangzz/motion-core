@@ -2,7 +2,7 @@
 
 이 문서는 **절차서**다. 왜 이렇게 하는지는
 `D:\design_docs\motion-platform-design.md` §2, 현재 상태는
-`D:\design_docs\motionopt-scaffold\START_HERE.md`.
+`..\..\motionopt\START_HERE.md`.
 
 > 🔴 **사용자 승인 전에 실행하지 않는다.** 기존 레포(`robot_web_simulator`)를 수정하는
 > 작업이다. START_HERE §2 의 A/B/C 결정이 먼저다. 아래는 **A(진짜 분리)** 기준이다.
