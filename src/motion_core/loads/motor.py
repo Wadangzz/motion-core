@@ -43,7 +43,7 @@ class Motor:
 
 
 EXAMPLE_MOTORS = {
-    # Plausible numbers for a 400 W low-inertia servo. Synthetic, not a catalog entry.
+    # Plausible numbers for low-inertia servos. Synthetic, not catalog entries.
     "example_400W": Motor(
         name="example_400W",
         rated_torque=1.3,
@@ -51,6 +51,14 @@ EXAMPLE_MOTORS = {
         rated_speed=3000 * RPM,
         max_speed=6000 * RPM,
         rotor_inertia=0.28e-4,
+    ),
+    "example_750W": Motor(
+        name="example_750W",
+        rated_torque=2.4,
+        max_torque=7.2,
+        rated_speed=3000 * RPM,
+        max_speed=6000 * RPM,
+        rotor_inertia=0.87e-4,
     ),
 }
 

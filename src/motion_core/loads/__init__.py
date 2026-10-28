@@ -4,5 +4,14 @@ from motion_core.loads.articulated_robot import ArticulatedRobot
 from motion_core.loads.ball_screw import BallScrew
 from motion_core.loads.base import LoadModel
 from motion_core.loads.motor import EXAMPLE_MOTORS, Motor, get_motor
+from motion_core.loads.rack_pinion import RackPinion
 
-__all__ = ["EXAMPLE_MOTORS", "ArticulatedRobot", "BallScrew", "LoadModel", "Motor", "get_motor"]
+__all__ = [
+    "EXAMPLE_MOTORS",
+    "ArticulatedRobot",
+    "BallScrew",
+    "LoadModel",
+    "Motor",
+    "RackPinion",
+    "get_motor",
+]
