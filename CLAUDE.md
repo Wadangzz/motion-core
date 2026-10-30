@@ -2,9 +2,9 @@
 
 ## 먼저 읽을 것
 
-**현재 상태·다음 작업의 정본은 `..\motionopt\START_HERE.md` 다.**
+**현재 상태·다음 작업의 정본은 `..\motionopt\docs\START_HERE.md` 다.**
 작업을 시작하기 전에 읽는다. 설계 의도(수식·검증 V0~V5·로드맵)는
-`D:\design_docs\motion-platform-design.md`, 끝난 추출의 이력은 `docs/EXTRACTION.md`.
+`..\motionopt\docs\motion-platform-design.md`, 끝난 추출의 이력은 `docs/EXTRACTION.md`.
 
 **식을 건드리기 전에 `docs/theory/conventions.md` 를 읽는다.** 좌표·단위 규약이
 거기 한 번만 정의돼 있고, 이 분야 부호 오류의 1순위가 프레임 혼동이다.
