@@ -1,12 +1,10 @@
 """Parity gates for the dynamics implementations.
 
-Two of these come across with the extracted code; the third is new and is the
-one that can actually catch a wrong equation.
+numpy vs JIT: the same equations written twice, so this catches porting bugs
+and nothing else. A wrong equation passes both sides.
 
-- numpy vs JIT: same equations, two implementations. Catches porting bugs.
-- vs MuJoCo (V3.5): an independent implementation. Catches wrong equations.
-  Optional dependency, skipped when absent. A match here says the implementation
-  is right, not that the model matches a real machine -- that is the bench test.
+The gate that can catch a wrong equation is V3.5, against MuJoCo, and it lives
+in test_mujoco_cross.py.
 """
 
 import numpy as np
@@ -88,8 +86,5 @@ def test_named_poses_parity(th):
     assert np.max(np.abs(a - b)) < TOL
 
 
-@pytest.mark.skip(reason="not implemented: V3.5 cross-check")
-def test_mujoco_inverse_dynamics_parity():
-    """Same trajectory through both engines; joint torque difference <= 1%."""
-    pytest.importorskip("mujoco")
-    raise NotImplementedError
+# V3.5 (vs MuJoCo) lives in test_mujoco_cross.py: it must not sit behind this
+# module's numba skip, having nothing to do with the JIT path.
