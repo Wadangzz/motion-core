@@ -2,8 +2,9 @@
 
 No equations are derived here — ``Dynamics.inverse_dynamics`` (parity-tested
 against numba, cross-checked against MuJoCo) does the physics. This class only
-adapts it to the ``LoadModel`` protocol and adds motor limits and smoothed
-joint friction, exactly as ``BallScrew`` does for the linear axis.
+adapts it to the ``LoadModel`` protocol and adds motor limits, smoothed joint
+friction and a contact wrench at the tip, exactly as ``BallScrew`` does for the
+linear axis.
 
 Coordinates follow ``docs/theory/conventions.md``: a robot works directly in
 ``q`` [rad], there is no linear-to-motor factor ``k``. Torque limits come from
@@ -20,7 +21,25 @@ from motion_core.robots import Dynamics, RobotModel
 
 @dataclass(frozen=True)
 class ArticulatedRobot:
-    """Serial arm (or a 1-dof mechanism modeled as one). ``ndof == model.n``."""
+    """Serial arm (or a 1-dof mechanism modeled as one). ``ndof == model.n``.
+
+    ``tip_wrench`` is what the end effector pushes on its environment with:
+    ``[moment; force]`` in the end-effector frame, Modern Robotics convention. A
+    gripper squeezing an object at N newtons is a force entry of N. Its
+    joint-torque contribution is ``model.jacobian_body(q).T @ tip_wrench``, which
+    is a test, and it stays constant in that frame, which is what a grip force
+    is. Leave it at 0 for free-space motion.
+
+    A payload bolted to the flange is **not** this. Its weight points down in the
+    world, so in the end-effector frame it swings as the arm moves, and a
+    constant field cannot say that. Put the mass in the model instead:
+    ``urdf_loader`` merges the inertia of links attached by fixed joints, which is
+    where a gripper's own weight belongs.
+
+    It is a field and not an argument to ``torque`` because the ``LoadModel``
+    contract is ``(q, dq, ddq)`` and nothing else, the same reason a cam axis
+    converts its master angle internally.
+    """
 
     model: RobotModel
     max_torque: "float | np.ndarray"  # N·m per joint, peak (speed-independent for now)
@@ -29,13 +48,16 @@ class ArticulatedRobot:
     viscous: float = 0.0  # [N·m·s/rad] per joint
     coulomb: float = 0.0  # [N·m] per joint
     smoothing_eps: float = 1.0  # [rad/s] width of the tanh Coulomb smoothing
+    tip_wrench: "float | np.ndarray" = 0.0  # [N·m, N] see the class docstring
     _max: np.ndarray = field(init=False, repr=False)
     _rated: np.ndarray = field(init=False, repr=False)
+    _tip: np.ndarray = field(init=False, repr=False)
 
     def __post_init__(self):
         n = self.model.n
         object.__setattr__(self, "_max", np.broadcast_to(self.max_torque, (n,)).astype(float))
         object.__setattr__(self, "_rated", np.broadcast_to(self.rated_torque, (n,)).astype(float))
+        object.__setattr__(self, "_tip", np.broadcast_to(self.tip_wrench, (6,)).astype(float))
 
     @property
     def ndof(self) -> int:
@@ -57,11 +79,10 @@ class ArticulatedRobot:
         vel = np.atleast_2d(dq.reshape(-1, 1) if flat_1dof else dq)
         acc = np.atleast_2d(ddq.reshape(-1, 1) if flat_1dof else ddq)
 
-        no_tip = np.zeros(6)
         tau = np.empty_like(pts)
         for i in range(pts.shape[0]):
             tau[i] = Dynamics.inverse_dynamics(
-                pts[i], vel[i], acc[i], self.model.gravity, no_tip, *self.model.dyn_args
+                pts[i], vel[i], acc[i], self.model.gravity, self._tip, *self.model.dyn_args
             )
         tau += self.viscous * vel + self.coulomb * np.tanh(vel / self.smoothing_eps)
         if flat_1dof:

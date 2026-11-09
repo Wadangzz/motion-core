@@ -9,6 +9,7 @@ potential is V = -m g r sin(theta), so
 """
 
 import numpy as np
+import pytest
 
 from motion_core.loads import ArticulatedRobot
 from motion_core.robots import RobotModel
@@ -69,3 +70,40 @@ def test_friction_terms_add_on_top():
     dq = np.r_[5.0]
     extra = rubbed.torque(np.zeros(1), dq, np.zeros(1)) - plain.torque(np.zeros(1), dq, np.zeros(1))
     assert np.isclose(extra[0], 0.02 * 5.0 + 0.5 * np.tanh(5.0), rtol=1e-6)
+
+
+@pytest.mark.parametrize("wrench", [
+    np.r_[0.0, 0.0, 0.0, 0.0, 0.0, 10.0],      # pure force, +z at the tip
+    np.r_[0.0, 3.0, 0.0, 0.0, 0.0, 0.0],       # pure moment, about +y
+    np.r_[0.4, -1.5, 0.2, 7.0, -2.0, 10.0],    # both halves at once
+], ids=["force", "moment", "mixed"])
+def test_tip_wrench_adds_the_jacobian_transpose_term(wrench):
+    """A contact wrench costs ``J_b(q).T @ F`` on the joints, and nothing else.
+
+    That relation is independent of the RNE: ``jacobian_body`` is kinematics, so
+    this catches a frame or sign error in how the wrench reaches the dynamics.
+    """
+    plain = _pendulum()
+    pushing = ArticulatedRobot(plain.model, max_torque=80.0, rated_torque=25.0,
+                               tip_wrench=wrench)
+    zero = np.zeros(1)
+    for theta in (np.zeros(1), np.r_[0.4], np.r_[-0.9]):
+        extra = pushing.torque(theta, zero, zero) - plain.torque(theta, zero, zero)
+        assert np.allclose(extra, plain.model.jacobian_body(theta).T @ wrench, atol=1e-12)
+
+
+def test_tip_force_is_a_lever_at_the_tip():
+    """Magnitude by hand: a force F at a tip L from the axis is L*F of torque.
+
+    It does not vary with theta, because the wrench is given in the end-effector
+    frame and turns with it. A grip force behaves that way; a hanging payload
+    does not, which is why the class docstring sends that case to the model.
+    """
+    plain = _pendulum()
+    force = 10.0
+    pushing = ArticulatedRobot(plain.model, max_torque=80.0, rated_torque=25.0,
+                               tip_wrench=np.r_[0.0, 0.0, 0.0, 0.0, 0.0, force])
+    zero = np.zeros(1)
+    for theta in (np.zeros(1), np.r_[0.4], np.r_[-0.9]):
+        extra = pushing.torque(theta, zero, zero) - plain.torque(theta, zero, zero)
+        assert np.isclose(abs(extra[0]), L * force)

@@ -38,7 +38,7 @@
 ```bash
 uv sync                               # dev 그룹이 extras 를 끌어온다 (2026-11-04)
 uv pip install -e ".[dev]"            # CI 와 같은 경로. 둘 중 아무거나
-uv run --no-sync python -m pytest -q  # 57 passed (2026-11-09)
+uv run --no-sync python -m pytest -q  # 61 passed (2026-11-09)
 uv run --no-sync ruff check .         # 깨끗해야 한다 (line-length 100)
 ```
 
@@ -65,6 +65,11 @@ env -u VIRTUAL_ENV PYTHONPATH=<repo>/src \
 - **`max |tau|` 를 목적함수에 직접 넣지 않는다** — 비평활. epigraph 변환(보조변수 `t`)
   필수. SLSQP 가 안 돌면 솔버가 아니라 정식화를 먼저 의심한다
 - **쿨롱 마찰 `sgn` 은 평활화한다** — 최적화기가 수치 미분한다. 평활 폭을 docstring 에 적는다
+- **`tip_wrench` 는 엔드이펙터 프레임의 `[moment; force]`** (MR 규약, 기여분은
+  `J_b(q).T @ tip_wrench`). **매달린 하중을 여기 넣지 말 것**: 무게는 world 에서
+  아래를 향하니 EE 프레임에서는 자세에 따라 돌고, 상수 필드로 표현이 안 된다.
+  그리퍼 자체 질량은 URDF 쪽이다 (`urdf_loader` 가 고정관절 링크를 합친다).
+  파지력처럼 EE 프레임에서 상수인 접촉력만 이 필드다
 - **MuJoCo 는 검증 전용**(V3.5, ≤1%). gradient 가 없어 최적화 루프에 넣지 않는다.
   numpy↔numba parity 는 같은 수식의 두 구현이라 수식이 틀리면 둘 다 틀린다 — 그 맹점을
   MuJoCo 가 덮는다. 단 시뮬 둘이 맞아도 실기 증거는 아니다(그건 V5)
