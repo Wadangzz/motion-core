@@ -15,8 +15,9 @@ dependencies = ["numpy>=1.26", "scipy>=1.11"]
 [project.optional-dependencies]
 # JIT-accelerated dynamics. A pure-numpy path exists and is checked for parity.
 fast = ["numba>=0.59"]
-# URDF-defined serial robots.
-robot = ["yourdfpy>=0.0.56"]
+# URDF-defined serial robots. robot_descriptions supplies the URDFs robot_registry
+# fetches on first use (ur5 is the exception: hardcoded, no download).
+robot = ["yourdfpy>=0.0.56", "robot_descriptions>=1.12"]
 # Independent cross-check of the inverse dynamics (V3.5). Test-only.
 validation = ["mujoco>=3.1"]
 # Larger NLPs with analytic derivatives, once SLSQP runs out.

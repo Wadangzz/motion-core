@@ -38,17 +38,27 @@
 ```bash
 uv sync                               # dev 그룹이 extras 를 끌어온다 (2026-11-04)
 uv pip install -e ".[dev]"            # CI 와 같은 경로. 둘 중 아무거나
-uv run --no-sync python -m pytest -q  # 45 passed (2026-11-04)
+uv run --no-sync python -m pytest -q  # 57 passed (2026-11-09)
 uv run --no-sync ruff check .         # 깨끗해야 한다 (line-length 100)
 ```
 
-numba 없는 설치를 확인할 때(**`--no-project` 가 있어야 한다**):
-`PYTHONPATH=src uv run --no-project --with pytest --with numpy --with scipy -m pytest tests -q`
-→ 35 passed, 10 skipped (2026-11-04 실측).
+numba 없는 설치를 확인할 때. **`--no-project` 만으로는 부족하다**: uv 는 그래도
+venv 를 찾아 쓴다. 리포 밖(venv·pyproject 없는 디렉토리)에서, `VIRTUAL_ENV` 를 떼고
+돌려야 진짜 ephemeral 환경이 뜬다.
 
-`--no-project` 를 빼면 uv 가 프로젝트 환경(numba·mujoco 포함)을 그대로 써서
-**45 passed 가 나온다.** 숫자는 멀쩡해 보이는데 numba 없는 경로를 하나도 안 밟는다.
-이 줄의 옛 숫자(3 passed, 8 skipped)가 안 맞게 된 이유이고, 거짓 초록이다.
+```bash
+cd <venv 없는 빈 디렉토리>
+env -u VIRTUAL_ENV PYTHONPATH=<repo>/src \
+  uv run --no-project --with pytest --with numpy --with scipy \
+  -m pytest <repo>/tests -q
+```
+→ 44 passed, 11 skipped (2026-11-09 실측). skip 11건 중 1건은 `test_urdf_loader`
+모듈 전체다 (`importorskip` 은 모듈을 1건으로 센다. 그 안에 테스트가 3개라 전체는 57개).
+
+조용히 틀리는 경우가 두 가지다. `--no-project` 를 빼면 프로젝트 환경(numba·mujoco
+포함)을 그대로 쓴다. `--no-project` 를 넣어도 **`VIRTUAL_ENV` 가 다른 리포를 가리키면
+그 venv 를 쓴다** (경고는 "ignored" 라고 하는데 `sys.prefix` 는 거기다). 둘 다 숫자는
+멀쩡해 보이고 numba 없는 경로를 안 밟는다. 거짓 초록이다.
 
 ## 잊으면 다시 헤매는 것
 

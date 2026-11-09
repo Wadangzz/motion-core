@@ -3,6 +3,10 @@
 yourdfpy 로 파싱, 직렬 체인(serial arm) 가정. 회전·직동 관절을 한 스크류축으로 통일.
 UR5 하드코딩값(ur5_model)과 비교 검증 완료: Slist/Mlist diff < 1e-11, Glist 정확 일치.
 
+고정관절로 붙은 링크(그리퍼·툴·플랜지)의 질량은 직전 액추에이터 링크에 합친다.
+안 합치면 조용히 빠진다: Panda 핸드 0.73kg 을 빼면 DROID 실측 토크 대비 2축 오차가
+7.6% → 18.1% 로 2.4배가 된다(2026-11-09 실측).
+
 반환 dict 는 robot_math.Dynamics / dynamics_fast 가 그대로 받는 (Mlist, Glist, Slist) 형식.
 """
 import numpy as np
@@ -25,12 +29,16 @@ def load_mr_model(urdf_path, ee_link=None):
     else:
         path = [j for j in r.robot.joints if j.type in _ACT]   # 직렬 가정
 
-    Slist, names, limits, Glist = [], [], [], []
-    WC = [np.eye(4)]                 # WC[0]=base 프레임, WC[k]=k번째 액추에이터 COM 프레임
+    Slist, names, limits = [], [], []
+    parts, R_link = [], []           # parts[k]=k번째 액추에이터 링크에 붙은 강체들(world)
     T = np.eye(4)                    # home 에서 현재 링크 프레임의 world 변환
     for j in path:
         T = T @ np.asarray(j.origin, float)
-        if j.type not in _ACT:                       # fixed 는 변환만 누적
+        if j.type not in _ACT:
+            # fixed 는 변환을 누적하고, 그 자식 링크의 관성은 직전 액추에이터 링크에
+            # 합친다. 액추에이터가 아직 없으면 고정 베이스라 동역학에 기여하지 않는다.
+            if parts:
+                parts[-1].append(_world_body(links[j.child].inertial, T))
             continue
         ax = np.asarray(j.axis, float)
         ax = ax / np.linalg.norm(ax)
@@ -40,12 +48,8 @@ def load_mr_model(urdf_path, ee_link=None):
             Slist.append(np.concatenate([np.zeros(3), w]))
         else:
             Slist.append(np.concatenate([w, -np.cross(w, q)]))
-        ine = links[j.child].inertial
-        WC.append(T @ np.asarray(ine.origin, float))     # COM 프레임(world)
-        G = np.zeros((6, 6))
-        G[:3, :3] = np.asarray(ine.inertia, float)       # COM 관성텐서
-        G[3:, 3:] = float(ine.mass) * np.eye(3)
-        Glist.append(G)
+        parts.append([_world_body(links[j.child].inertial, T)])
+        R_link.append(T[:3, :3].copy())
         names.append(j.name)
         lim = getattr(j, "limit", None)
         if lim is not None and j.type != "continuous":
@@ -55,6 +59,20 @@ def load_mr_model(urdf_path, ee_link=None):
 
     n = len(names)
     M_home = T.copy()                # EE = ee_link (또는 마지막 액추에이터 링크) 프레임
+
+    # 링크마다 합쳐 (COM 프레임, 공간관성) 으로. 프레임 방향은 링크 프레임을 쓴다
+    # (URDF 관성 origin 의 회전이 단위면 합치기 전 값과 비트 동일).
+    WC = [np.eye(4)]                 # WC[0]=base 프레임, WC[k]=k번째 액추에이터 COM 프레임
+    Glist = []
+    for k in range(n):
+        mass, com, inertia = _merge_bodies(parts[k])
+        C = np.eye(4)
+        C[:3, :3], C[:3, 3] = R_link[k], com
+        WC.append(C)
+        G = np.zeros((6, 6))
+        G[:3, :3] = R_link[k].T @ inertia @ R_link[k]     # COM 관성텐서(링크 프레임)
+        G[3:, 3:] = mass * np.eye(3)
+        Glist.append(G)
 
     Mlist = [WC[1]]                  # M01 = WC1 (base→링크1 COM)
     for i in range(1, n):
@@ -71,6 +89,31 @@ def load_mr_model(urdf_path, ee_link=None):
         "joint_names": names,
         "joint_limits": limits,
     }
+
+
+def _world_body(ine, T):
+    """링크의 <inertial> → home 의 world 프레임 기준 (질량, COM 위치, 관성텐서).
+
+    ``ine`` 가 없는 링크(관성 미기재)는 질량 0 으로 본다.
+    """
+    if ine is None:
+        return 0.0, T[:3, 3].copy(), np.zeros((3, 3))
+    C = T @ np.asarray(ine.origin, float)            # COM 프레임(world)
+    R = C[:3, :3]
+    return float(ine.mass), C[:3, 3], R @ np.asarray(ine.inertia, float) @ R.T
+
+
+def _merge_bodies(bodies):
+    """강체 여러 개를 하나로 (평행축 정리). 전부 같은 world 방향 기준."""
+    mass = sum(b[0] for b in bodies)
+    if mass == 0.0:                                  # 질량 미기재 링크뿐 → COM 미정의
+        return 0.0, bodies[0][1], sum(b[2] for b in bodies)
+    com = sum(m * c for m, c, _ in bodies) / mass
+    inertia = np.zeros((3, 3))
+    for m, c, I in bodies:
+        d = c - com
+        inertia += I + m * (d @ d * np.eye(3) - np.outer(d, d))
+    return mass, com, inertia
 
 
 def _path_joints(r, ee_link):
