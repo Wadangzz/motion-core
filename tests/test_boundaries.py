@@ -1,8 +1,9 @@
 """The reason this package can be a dependency, as a test.
 
-``motion-core`` is imported by a web simulator and by an industrial motion-data
-generator. It must install with numpy + scipy alone, and it must not know
-anything about either consumer. These tests fail if that erodes.
+``motion-core`` is imported by a web simulator, by an industrial motion-data
+generator, and by a demonstration-dataset auditor. It must install with
+numpy + scipy alone, and it must not know anything about any of them. These
+tests fail if that erodes.
 """
 
 import ast
@@ -12,10 +13,11 @@ PKG = pathlib.Path(__file__).parent.parent / "src" / "motion_core"
 
 # Allowed in the package, but only behind a guarded import inside a function,
 # so that importing motion_core never requires them.
-OPTIONAL = {"numba", "mujoco", "yourdfpy", "casadi", "matplotlib", "yaml"}
+OPTIONAL = {"numba", "mujoco", "yourdfpy", "robot_descriptions", "casadi",
+            "matplotlib", "yaml"}
 
 # Consumers. The engine never imports its users.
-CONSUMERS = ("motionopt", "robot_web_simulator", "app")
+CONSUMERS = ("motionopt", "robot_web_simulator", "app", "feasibility_audit")
 
 
 def _module_level_imports(path: pathlib.Path) -> set[str]:
