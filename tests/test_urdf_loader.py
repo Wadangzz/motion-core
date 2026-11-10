@@ -84,3 +84,77 @@ def test_tool_mass_does_not_move_the_kinematics(tmp_path):
     np.testing.assert_array_equal(light["Slist"], heavy["Slist"])
     np.testing.assert_array_equal(light["M_home"], heavy["M_home"])
     np.testing.assert_allclose(heavy["M_home"][:3, 3], [2, 0, 0], atol=1e-12)
+
+
+# ---------------------------------------------------------------------------
+# ee_link 미지정 경로: 체인을 문서 순서가 아니라 트리에서 유도한다.
+#
+# 문서 순서 가정은 조용히 틀린다. SO-ARM101 URDF 는 관절을 역순(6,5,4,3,2,1)으로
+# 적어서 그 가정으로 만들면 모델이 스크램블되고, 형제 관절(그리퍼 손가락 2개)은
+# 직렬 사슬로 이어붙는다(레지스트리의 omx 가 그랬다). 둘 다 예외가 아니라 잘못된
+# 숫자로 나오므로, 유도 불가는 에러여야 한다.
+
+_REVERSED = """<robot name="reversed_doc_order">
+  <link name="base"/>
+  <link name="mid"><inertial><origin xyz="0 0 0"/><mass value="1"/>
+    <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/></inertial></link>
+  <link name="tip"><inertial><origin xyz="0 0 0"/><mass value="1"/>
+    <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/></inertial></link>
+  <joint name="joint2" type="revolute">
+    <parent link="mid"/><child link="tip"/>
+    <origin xyz="1 0 0"/><axis xyz="0 0 1"/>
+    <limit lower="-3" upper="3" effort="1" velocity="1"/>
+  </joint>
+  <joint name="joint1" type="revolute">
+    <parent link="base"/><child link="mid"/>
+    <origin xyz="0 0 0"/><axis xyz="0 0 1"/>
+    <limit lower="-3" upper="3" effort="1" velocity="1"/>
+  </joint>
+</robot>
+"""
+
+_SIBLINGS = """<robot name="two_fingers">
+  <link name="base"/>
+  <link name="palm"><inertial><origin xyz="0 0 0"/><mass value="1"/>
+    <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/></inertial></link>
+  <link name="left"/>
+  <link name="right"/>
+  <joint name="joint1" type="revolute">
+    <parent link="base"/><child link="palm"/>
+    <origin xyz="0 0 0"/><axis xyz="0 0 1"/>
+    <limit lower="-3" upper="3" effort="1" velocity="1"/>
+  </joint>
+  <joint name="finger_left" type="prismatic">
+    <parent link="palm"/><child link="left"/>
+    <origin xyz="1 0 0"/><axis xyz="0 1 0"/>
+    <limit lower="0" upper="0.02" effort="1" velocity="1"/>
+  </joint>
+  <joint name="finger_right" type="prismatic">
+    <parent link="palm"/><child link="right"/>
+    <origin xyz="1 0 0"/><axis xyz="0 -1 0"/>
+    <limit lower="0" upper="0.02" effort="1" velocity="1"/>
+  </joint>
+</robot>
+"""
+
+
+def _write(tmp_path, text, name):
+    p = tmp_path / name
+    p.write_text(text)
+    return str(p)
+
+
+def test_chain_order_comes_from_the_tree_not_the_document(tmp_path):
+    """관절을 역순으로 적은 URDF 도 base→tip 순서로 나온다."""
+    m = load_mr_model(_write(tmp_path, _REVERSED, "rev.urdf"))
+
+    assert m["joint_names"] == ["joint1", "joint2"]
+    # joint1 은 원점, joint2 는 x=1 축. 문서 순서로 읽으면 뒤집혀서 -Slist 열이 바뀐다.
+    np.testing.assert_allclose(m["Slist"][:, 0], [0, 0, 1, 0, 0, 0], atol=1e-12)
+    np.testing.assert_allclose(m["Slist"][:, 1], [0, 0, 1, 0, -1, 0], atol=1e-12)
+
+
+def test_branching_actuators_raise_instead_of_serializing(tmp_path):
+    """형제 관절(손가락 2개)은 직렬이 아니다. 조용히 이어붙이지 말고 거부한다."""
+    with pytest.raises(ValueError, match="finger_right"):
+        load_mr_model(_write(tmp_path, _SIBLINGS, "fingers.urdf"))

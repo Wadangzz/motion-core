@@ -38,7 +38,7 @@
 ```bash
 uv sync                               # dev 그룹이 extras 를 끌어온다 (2026-11-04)
 uv pip install -e ".[dev]"            # CI 와 같은 경로. 둘 중 아무거나
-uv run --no-sync python -m pytest -q  # 61 passed (2026-11-09)
+uv run --no-sync python -m pytest -q  # 63 passed (2026-11-10)
 uv run --no-sync ruff check .         # 깨끗해야 한다 (line-length 100)
 ```
 
@@ -53,7 +53,7 @@ env -u VIRTUAL_ENV PYTHONPATH=<repo>/src \
   -m pytest <repo>/tests -q
 ```
 → 44 passed, 11 skipped (2026-11-09 실측). skip 11건 중 1건은 `test_urdf_loader`
-모듈 전체다 (`importorskip` 은 모듈을 1건으로 센다. 그 안에 테스트가 3개라 전체는 57개).
+모듈 전체다 (`importorskip` 은 모듈을 1건으로 센다. 그 안에 테스트가 5개라 전체는 59개).
 
 조용히 틀리는 경우가 두 가지다. `--no-project` 를 빼면 프로젝트 환경(numba·mujoco
 포함)을 그대로 쓴다. `--no-project` 를 넣어도 **`VIRTUAL_ENV` 가 다른 리포를 가리키면

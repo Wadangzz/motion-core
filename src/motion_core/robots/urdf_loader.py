@@ -18,16 +18,16 @@ def load_mr_model(urdf_path, ee_link=None):
     """URDF 경로 → MR 모델 dict.
 
     ee_link 지정 시 base→ee_link **경로 위의 관절만** 사용(그리퍼 등 분기 제외).
-    미지정 시 직렬 arm 가정으로 액추에이터 관절을 문서 순서대로(UR·iiwa 충족).
+    미지정 시 트리에서 유도한다(_serial_ee_link): 액추에이터가 한 사슬이면 그 마지막
+    링크가 EE 고, 분기하면 ValueError. 문서 순서는 쓰지 않는다.
     """
     from yourdfpy import URDF  # robot extra — import 시점에 요구하지 않는다
 
     r = URDF.load(urdf_path)
     links = {lk.name: lk for lk in r.robot.links}
-    if ee_link is not None:
-        path = _path_joints(r, ee_link)              # fixed 포함 경로 순서
-    else:
-        path = [j for j in r.robot.joints if j.type in _ACT]   # 직렬 가정
+    if ee_link is None:
+        ee_link = _serial_ee_link(r)
+    path = _path_joints(r, ee_link)                  # fixed 포함 경로 순서
 
     Slist, names, limits = [], [], []
     parts, R_link = [], []           # parts[k]=k번째 액추에이터 링크에 붙은 강체들(world)
@@ -125,3 +125,32 @@ def _path_joints(r, ee_link):
         seq.append(by_child[cur])
         cur = by_child[cur].parent
     return list(reversed(seq))
+
+
+def _serial_ee_link(r):
+    """액추에이터가 한 사슬인지 확인하고 마지막 액추에이터 링크를 돌려준다.
+
+    문서 순서(= 체인 순서) 가정이 조용히 틀리는 자리가 둘이다. 관절을 역순으로 적은
+    URDF(SO-ARM101)는 모델이 스크램블되고, 형제 관절(그리퍼 손가락 2개)은 직렬
+    사슬로 이어붙는다. 둘 다 예외가 아니라 잘못된 숫자로 나오므로, 가장 깊은
+    액추에이터까지의 경로가 액추에이터 전부를 담지 못하면 거부한다.
+    """
+    act = [j for j in r.robot.joints if j.type in _ACT]
+    if not act:
+        raise ValueError("액추에이터 관절이 없다")
+    by_child = {j.child: j for j in r.robot.joints}
+
+    def depth(link):
+        d = 0
+        while link in by_child:
+            link, d = by_child[link].parent, d + 1
+        return d
+
+    ee = max((j.child for j in act), key=depth)
+    on_path = {j.name for j in _path_joints(r, ee)}
+    off = [j.name for j in act if j.name not in on_path]
+    if off:
+        raise ValueError(
+            f"액추에이터가 직렬이 아니다: {ee} 경로 밖의 관절 {off}. "
+            "ee_link 로 체인을 지정하라")
+    return ee
