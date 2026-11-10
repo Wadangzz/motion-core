@@ -2,7 +2,7 @@
 
 ## 먼저 읽을 것
 
-**현재 상태·다음 작업의 정본은 `..\motionopt\docs\START_HERE.md` 다.**
+**현재 상태·다음 작업의 정본은 `..\settings-private\START_HERE.md` 다.**
 작업을 시작하기 전에 읽는다. 설계 의도(수식·검증 V0~V5·로드맵)는
 `..\motionopt\docs\motion-platform-design.md`, 끝난 추출의 이력은 `docs/EXTRACTION.md`.
 
